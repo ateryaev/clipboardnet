@@ -1,0 +1,31 @@
+/* src/styles.css */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+body {
+  background: #aaa;
+  padding: 0rem;
+}
+
+.App {
+  margin: auto;
+}
+
+*:focus {
+  outline: none !important;
+}
+
+button:focus-visible {
+  box-shadow: 0 0 0 4px #aaa !important;
+}
+
+button:has(svg):focus-visible {
+  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.4) !important;
+}
+
+button {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
