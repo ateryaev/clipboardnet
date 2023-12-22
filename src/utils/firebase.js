@@ -19,35 +19,58 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth();
 const db = getDatabase(app);
 
+export function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 export async function signIn() {
   await signInAnonymously(auth);
   return auth.currentUser.uid;
 }
 
-function generateKey() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ1234567890"; //1=I, 0=D=Q=O, 2=Z, 8=B, 5=S, V=W, 6=G
-  let key = "";
+function generateCode() {
+  //const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ1234567890"; 
+  //1=I, 0=D=Q=O, 2=Z, 8=B, 5=S, V=W=Y, 6=G
+  const chars = "ACEFHJKLMNPRTUVX1234567890";
+  let code = "";
   for (let i = 0; i < 6; i++) {
-    key += chars.charAt(Math.floor(chars.length * Math.random()));
+    code += chars.charAt(Math.floor(chars.length * Math.random()));
   }
-  return key;
+  return code;
+}
+export function clampCode(code) {
+  //1=I, 0=D=Q=O, 2=Z, 8=B, 5=S, V=W=Y, 6=G
+  code = code.trim().toUpperCase();
+  code = code.replaceAll("I", "1");
+  code = code.replaceAll("D", "0");
+  code = code.replaceAll("Q", "0");
+  code = code.replaceAll("O", "0");
+  code = code.replaceAll("Z", "2");
+  code = code.replaceAll("B", "8");
+  code = code.replaceAll("S", "5");
+  code = code.replaceAll("W", "V");
+  code = code.replaceAll("Y", "V");
+  code = code.replaceAll("G", "6");
+  return code;
 }
 
 export async function addClip(text) {
-  const key = generateKey();
+  const code = generateCode();
   let clip = {};
   clip.createdBy = auth.currentUser.uid;
   clip.text = text;
   clip.updatedOn = clip.createdOn = serverTimestamp();
-  await set(ref(db, 'clips/' + key), clip);
-  return key;
+  await set(ref(db, 'clips/' + code), clip);
+  return code;
 }
 
-export async function updateClip(key, text) {
+export async function updateClip(code, text) {
+  code = clampCode(code);
+  if (code.length < 5) return;
   let clip = {};
   clip.text = text;
   clip.updatedOn = serverTimestamp();
-  await update(ref(db, 'clips/' + key), clip);
+  await update(ref(db, 'clips/' + code), clip);
 }
 
 export async function updateUser(subs) {
@@ -55,47 +78,33 @@ export async function updateUser(subs) {
   await set(ref(db, `users/${auth.currentUser.uid}/subscriptions`), newSubscriptions);
 }
 
-export async function deleteClip(key) {
-  await remove(ref(db, 'clips/' + key));
+export async function deleteClip(code) {
+  code = clampCode(code);
+  if (code.length < 5) return;
+  await remove(ref(db, 'clips/' + code));
 }
 
-export async function getClip(clipKey) {
+export async function getClip(code) {
+  code = clampCode(code);
+  if (code.length < 5) return null;
   try {
-    const snap = await get(child(ref(db), `clips/${clipKey}`));
-    if (snap.exists()) return { ...snap.val() };
+    const snap = await get(child(ref(db), `clips/${code}`));
+    if (snap.exists()) return { code, exists: true, ...snap.val() };
   } catch (error) {
     console.error(error);
   }
   return null;
 }
 
-export function addOwnClipsListner(callback) {
-  if (!auth.currentUser) return null;
-
-  const clipsRef = query(ref(db, 'clips'),
-    orderByChild('createdBy'),
-    equalTo(auth.currentUser.uid));
-
-  const listner = onValue(clipsRef, (snapshot) => {
-    let out = [];
-    snapshot.forEach((child) => {
-      let clip = { key: child.key, ...child.val() };
-      out.push(clip);
-    });
-    out.sort((a, b) => { return b.updatedOn - a.updatedOn; })
-    callback(out);
-  });
-  return { callback: listner, ref: clipsRef };
-}
-
-export function createClipLoader(key, onLoad) {
-  const clipRef = query(ref(db, 'clips/' + key));
-  const listner = onValue(clipRef, (snapshot) => {
+export function createClipLoader(code, onLoad) {
+  const clipRef = query(ref(db, 'clips/' + code));
+  const listner = onValue(clipRef, async (snapshot) => {
     if (snapshot.size !== 0) {
-      const clip = { ...snapshot.val() };
+      const clip = { code, ...snapshot.val(), exists: true };
+      //await sleep(100)
       onLoad(clip)
     } else {
-      onLoad(null);
+      onLoad({ code, text: "", createdBy: 0, updatedBy: 0, exist: false });
     }
   });
   return { callback: listner, ref: clipRef };
@@ -109,7 +118,6 @@ export function createSubClipsLoader(onLoad) {
     if (snapshot.size === 1 && snapshot.val().subscriptions) {
       clipKeys = snapshot.val().subscriptions.split(" ");
     }
-
     onLoad(clipKeys);
   });
   return { callback: listner, ref: userRef };

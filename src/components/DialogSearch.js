@@ -1,14 +1,8 @@
 import { Modal, WButton } from "./Window"
 import * as Svg from './Svg'
 import { useEffect, useRef, useState } from "react";
-import { getClip } from "../utils/firebase";
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-export function DialogSearch({ onCancel, onFound }) {
-
+export function DialogSearch({ onCancel, onSearch }) {
   const searchInput = useRef(null);
   const [code, setCode] = useState("");
   const [searching, setSearching] = useState(false);
@@ -28,18 +22,11 @@ export function DialogSearch({ onCancel, onFound }) {
 
   async function handleSearchClick() {
     if (code.length < 5) return;
-    setStatus("Search in progress...");
-    setSearching(true);
-    await sleep(1000);
-    const clip = await getClip(code);
-    console.log("CLIP", clip);
-    if (clip) {
-      setStatus(`Clipboard #${code} was found!`);
-      onFound(code);
-    } else {
+    setStatus("Searching");
+    const res = await onSearch(code);
+    if (!res) {
       setStatus(`Clipboard #${code} was not found!`);
     }
-    setSearching(false);
   }
   return (<Modal title="search by code" icon={<Svg.Zoom />} bg="blue-500" fg="gray-200"
     onCancel={onCancel} >

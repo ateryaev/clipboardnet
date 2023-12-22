@@ -1,24 +1,29 @@
 //import './App.css';
-import React, { useEffect, useState } from "react";
-import { signIn, createOwnClipsLoader, createSubClipsLoader, removeListner } from "./utils/firebase";
+import React, { useEffect, useMemo, useState } from "react";
+import { signIn, createOwnClipsLoader, createSubClipsLoader, removeListner, createClipLoader, updateClip, deleteClip, sleep, addClip, getClip, updateUser } from "./utils/firebase";
 import { PageAllClips } from './components/PageAllClips';
 import { UserContext } from './components/UserContext';
 import { PageClipView } from './components/PageClipView';
 import { PageEdit } from './components/PageEdit';
 import { PageCreate } from './components/PageCreate';
+import { DialogSearch } from "./components/DialogSearch";
 
 //const UserContext = createContext(null);
 
 function App() {
 
   const [page, setPage] = useState("ALL");//VIEW, EDIT, ALL
-  const [selectedClip, setSelectedClip] = useState("");
+  const [selectedCode, setSelectedCode] = useState("");
 
   const [userOnline, setUserOnline] = useState(false);
-  const [ownClips, setOwnClips] = useState({});
+
   const [subKeys, setSubKeys] = useState([]);
   const [ownKeys, setOwnKeys] = useState([]);
-  const [subClips, setSubClips] = useState({});
+
+  const [ownClips, setOwnClips] = useState([]);
+  const [subClips, setSubClips] = useState([]);
+
+  const [processing, setProcessing] = useState(false);
 
   const [ctx, setCtx] = useState({ online: false, owns: {}, subs: {}, subKeys: [] });
 
@@ -58,36 +63,147 @@ function App() {
 
   }, [userOnline]);
 
-  function handleView(key) {
-    console.log("CLIP:", key, page)
-    setSelectedClip(key);
-    setPage("VIEW");
-  }
-  function handleEdit(key) {
-    console.log("CLIP:", key, page)
-    setSelectedClip(key);
+  const selectedClip = useMemo(() => {
+    let clip = ownClips[selectedCode];
+    if (!clip) clip = subClips[selectedCode];
+    if (!clip) clip = {
+      code: selectedCode,
+      text: "",
+      updatedBy: 0,
+      exist: false
+    }
+    return clip;
+  }, [selectedCode, ownClips, subClips]);
+
+  useEffect(() => {
+    if (!userOnline) return;
+    let loaders = [];
+    let loadedClips = {};
+    if (ownKeys.length === 0) setOwnClips([]);
+    ownKeys.forEach((code) => {
+      const loader = createClipLoader(code, (clip) => {
+        loadedClips[code] = clip;
+        if (Object.keys(loadedClips).length === ownKeys.length) {
+          setOwnClips(loadedClips);
+        }
+      });
+      loaders.push(loader);
+    });
+    return () => {
+      loaders.forEach((loader) => {
+        removeListner(loader);
+      });
+    }
+  }, [ownKeys]);
+
+  useEffect(() => {
+    if (!userOnline) return;
+    let loaders = [];
+    let loadedClips = {};
+    if (subKeys.length === 0) setSubClips([]);
+    subKeys.forEach((code) => {
+      const loader = createClipLoader(code, (clip) => {
+        loadedClips[code] = clip;
+        if (Object.keys(loadedClips).length === subKeys.length) {
+          setSubClips(loadedClips);
+        }
+      });
+      loaders.push(loader);
+    });
+    return () => {
+      loaders.forEach((loader) => {
+        removeListner(loader);
+      });
+    }
+  }, [subKeys]);
+
+  function handleEdit(code) {
+    console.log("CLIP:handleEdit", code, ownClips[code])
+    setSelectedCode(code);
     //setSelectedClip("");
     setPage("EDIT");
   }
-  function handleCreate() {
-    setPage("CREATE");
+
+  async function handleUpdate(text) {
+    await sleep(1000);
+    await updateClip(selectedCode, text);
   }
-  function handleCreated(newKey) {
-    setSelectedClip(newKey);
+
+  async function handleDelete() {
+    await sleep(1000);
+    await deleteClip(selectedCode);
+    await sleep(1000);
+    goMain();
+  }
+
+  function goMain() { setPage("ALL"); }
+  function goSearch() { setPage("SEARCH"); }
+  function goCreate() { setPage("CREATE"); }
+  function goView(code) { setSelectedCode(code); setPage("VIEW"); }
+
+  async function handleCreate(text) {
+    await sleep(1000);
+    const newText = text.trim();
+    const newKey = await addClip(newText);
+    setSelectedCode(newKey);
     setPage("EDIT");
+  }
+
+  async function handleSearch(code) {
+    await sleep(1000);
+    const clip = await getClip(code);
+    if (!clip) return false;
+    goView(clip.code);
+    return true;
+  }
+
+  async function handleSubscribeChange() {
+    await sleep(1000);
+    const subcribed = subKeys.includes(selectedCode);
+    let newSubs = [];
+    if (!subcribed) {
+      console.log("ADD");
+      newSubs = subKeys.slice();
+      newSubs.push(selectedCode);
+    } else {
+      console.log("REMOVE")
+      newSubs = subKeys.filter((code) => code !== selectedCode);
+    }
+    console.log("NEW SUBS", newSubs)
+    await updateUser(newSubs);
   }
 
   return (
     <div className="App max-w-[1024px] min-h-[100svh]">
       <UserContext.Provider value={{ subClips, ownClips, userOnline }}>
-        {page === "EDIT" && <PageEdit clipKey={selectedClip} subKeys={subKeys} onCancel={() => setPage("ALL")} />}
-        {page === "CREATE" && <PageCreate onCreated={handleCreated} onCancel={() => setPage("ALL")} />}
-        {page === "VIEW" && <PageClipView subKeys={subKeys} clipKey={selectedClip} onCancel={() => setPage("ALL")} />}
-        {page === "ALL" && <PageAllClips
-          ownKeys={ownKeys} subKeys={subKeys} recentKeys={["D0Z27J"]}
-          onView={handleView}
+        {page === "EDIT" && <PageEdit
+          clip={selectedClip}
+          onEdit={handleUpdate}
+          onDelete={handleDelete}
+          onCancel={goMain} />}
+
+        {page === "CREATE" && <PageCreate
           onCreate={handleCreate}
-          onEdit={handleEdit} />}
+          onCancel={goMain} />}
+
+        {page === "VIEW" && <PageClipView
+          subscribed={subKeys.includes(selectedCode)}
+          clip={selectedClip}
+          onSubscribeChange={handleSubscribeChange}
+          subKeys={subKeys} clipKey={selectedCode} onCancel={goMain} />}
+
+        {(page === "ALL" || page === "SEARCH") && <PageAllClips
+          owns={ownClips}
+          subs={subClips}
+          onView={(code) => goView(code)}
+          onCreate={goCreate}
+          onEdit={handleEdit}
+          onWantSearch={goSearch} />}
+
+        {page === "SEARCH" &&
+          <DialogSearch onCancel={goMain} onSearch={handleSearch} />
+        }
+
       </UserContext.Provider>
     </div >
   );

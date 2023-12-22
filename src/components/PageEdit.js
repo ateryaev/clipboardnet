@@ -1,55 +1,32 @@
-import { createClipLoader, deleteClip, removeListner, updateClip } from "../utils/firebase";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { UserContext } from './UserContext';
-import { Button, RButton, Confirm, Window } from "./Window";
+import { useEffect, useRef, useState } from "react";
+import { Button, Confirm, Window } from "./Window";
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
+export function PageEdit({ clip, onCancel, onDelete, onEdit }) {
 
-
-export function PageEdit({ clipKey, onCancel }) {
-
-  const ctx = useContext(UserContext);
-  const textareaRef = useRef(null);
-  const [clip, setClip] = useState({ text: "", updatedOn: 0, createdOn: 0 });
+  const textRef = useRef(null);
   const [changed, setChanged] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const [confirmation, setConfirmation] = useState(null); //EXIT, DELETE
-
-  useEffect(() => {
-    const loader = createClipLoader(clipKey, (clip) => {
-      if (clip) setClip(clip);
-    });
-    return () => {
-      removeListner(loader);
-    }
-  }, [clipKey]);
 
   useEffect(() => {
     handleInput();
   }, [clip]);
 
   function handleInput() {
-    setChanged(textareaRef.current.value !== clip.text);
+    setChanged(textRef.current.value !== clip.text);
   }
 
   async function handleSave() {
     setSaving(true);
-    await sleep(1000);
-    const newText = textareaRef.current.value;
-    await updateClip(clipKey, newText);
+    await onEdit(textRef.current.value);
     setSaving(false);
   }
 
   async function handleDelete() {
     setConfirmation(null);
     setSaving(true);
-    await sleep(1000);
-    await deleteClip(clipKey);
+    await onDelete();
     setSaving(false);
-    onCancel();
   }
 
   return (
@@ -65,23 +42,20 @@ export function PageEdit({ clipKey, onCancel }) {
         Are you sure you want to exit? If you exit all your changes will be lost.
       </Confirm>)}
 
-      <Window title={"" + clipKey} disabled={true}
+      <Window title={clip.code} disabled={true}
         onBack={() => { changed && setConfirmation("EXIT"); !changed && onCancel(); }}
         onAction={() => setConfirmation("DELETE")}
-        actions={["delete clipboard"]}
+        actions={["delete clipboard"]}>
 
-      >
         <div className="py-0 ps-4 pt-0 items-end uppercase text-xs font-extrabold flex justify-stretch">
           <div className="flex-1 pt-2">
             Editing clipboard
             <br /><small>
-              {!saving && (<>{new Date(clip.updatedOn).toLocaleString()}</>)}
+              {!saving && (<>{clip.exists ? new Date(clip.updatedOn).toLocaleString() : "deleted"}</>)}
               {saving && (<>Processing</>)}
             </small></div>
 
-
           <Button disabled={!changed || saving} onClick={handleSave}>save changes</Button>
-
         </div>
 
         <textarea className='min-h-[80px] block flex-1 break-all resize-none
@@ -90,7 +64,7 @@ export function PageEdit({ clipKey, onCancel }) {
          disabled:bg-gray-200'
           spellCheck="false"
           defaultValue={clip.text}
-          ref={textareaRef}
+          ref={textRef}
           onInput={handleInput}
           disabled={saving}
         />
