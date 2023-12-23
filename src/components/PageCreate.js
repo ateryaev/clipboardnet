@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Confirm, Window } from "./Window";
+import { addClip } from "../utils/firebase";
 
-export function PageCreate({ onCancel, onCreate }) {
+export function PageCreate({ onCancel, onCreated }) {
   const textareaRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(new Date().getTime());
   const [changed, setChanged] = useState(false);
@@ -19,10 +20,12 @@ export function PageCreate({ onCancel, onCreate }) {
     setChanged(textareaRef.current.value.trim() !== "");
   }
 
-  async function handleSave() {
+  async function handleCreate() {
     setSaving(true);
-    await onCreate(textareaRef.current.value.trim());
-    setSaving(false);
+    const text = textareaRef.current.value.trim();
+    const code = await addClip(text);
+    onCreated(code);
+    //setSaving(false);
   }
 
   function handleBack() {
@@ -34,7 +37,7 @@ export function PageCreate({ onCancel, onCreate }) {
   }
 
   return (
-    <Window title={"??????"} disabled={true} onBack={handleBack}>
+    <Window title={"??????"} onBack={handleBack}>
 
       {confirmation === "EXIT" && (<Confirm action={"discard creation"} onAction={onCancel}
         onCancel={() => { setConfirmation(null) }}>
@@ -48,7 +51,7 @@ export function PageCreate({ onCancel, onCreate }) {
             {!saving && (<>{new Date(currentTime).toLocaleString()}</>)}
             {saving && (<>Processing</>)}
           </small></div>
-        <Button disabled={!changed || saving} onClick={handleSave}>create</Button>
+        <Button disabled={!changed || saving} onClick={handleCreate}>create</Button>
       </div>
 
       <textarea className='min-h-[80px] block flex-1 break-all resize-none
@@ -56,6 +59,7 @@ export function PageCreate({ onCancel, onCreate }) {
          p-3 bg-white font-mono 
          disabled:bg-gray-200'
         spellCheck="false"
+        autoFocus
         ref={textareaRef}
         onInput={handleInput}
         disabled={saving}

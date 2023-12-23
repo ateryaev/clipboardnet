@@ -31,14 +31,14 @@ export function WButton({ ...props }) {
   )
 }
 
-export function Confirm({ action, onAction, onCancel, ...props }) {
+export function Confirm({ action, onAction, onCancel, disabled, ...props }) {
   return (
     <Modal title="warning" bg="red-500" icon={<Svg.Warning />} fg="gray-200" onCancel={onCancel}>
       <div className="text-center">
         {props.children}
       </div>
       <div className="flex justify-center text-xs font-extrabold">
-        <WButton onClick={onAction}>{action}</WButton>
+        <WButton onClick={onAction} disabled={disabled}>{action}</WButton>
       </div>
     </Modal>
   );
@@ -64,7 +64,7 @@ export function Header({ bg, onCancel, children, icon, ...props }) {
 
 export function Overlay({ bgColor, fgColor, ...props }) {
   return (
-    <div className={`fixed bg-${bgColor} bg-opacity-50 top inset-0 z-50 flex-col flex items-center justify-center`}>
+    <div className={`fixed bg-${bgColor} bg-opacity-50 top inset-0 z-50 flex-col flex items-center backdrop-blur-sm justify-center`}>
       <div className={`bg-${fgColor} p-0 max-w-[420px] w-[90%] 
       shadow-sm border-0 border-red-500`}>
         {props.children}

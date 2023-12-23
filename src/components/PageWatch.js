@@ -1,19 +1,21 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Window } from "./Window";
+import { createClipLoader, createSubClipsLoader, updateSubscription } from "../utils/firebase";
 
-export function PageClipView({ clip, subscribed, onSubscribeChange, onCancel }) {
+export function PageWatch({ code, subscribed, onCancel }) {
   const textareaRef = useRef(null);
   const [saving, setSaving] = useState(false);
-
+  const [clip, setClip] = useState({});
+  useEffect(() => createClipLoader(code, setClip), [code]);
 
   async function handleSubscibe() {
     setSaving(true);
-    await onSubscribeChange();
+    await updateSubscription(code, !subscribed);
     setSaving(false);
   }
 
   return (
-    <Window title={clip.code} onBack={onCancel}>
+    <Window title={code} onBack={onCancel}>
       <div className="py-0 ps-4 items-end uppercase text-xs font-extrabold flex justify-stretch">
         <div className="flex-1 pt-2">Watching clipboard
           <br />
@@ -32,7 +34,7 @@ export function PageClipView({ clip, subscribed, onSubscribeChange, onCancel }) 
       <textarea className='border-4 min-h-fit block flex-1 break-all resize-none
          border-gray-400 p-3 bg-gray-100 font-mono'
         spellCheck="false"
-        defaultValue={clip.text}
+        value={clip.text}
         ref={textareaRef}
         readOnly />
     </Window >

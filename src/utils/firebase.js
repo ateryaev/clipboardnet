@@ -73,9 +73,16 @@ export async function updateClip(code, text) {
   await update(ref(db, 'clips/' + code), clip);
 }
 
-export async function updateUser(subs) {
-  const newSubscriptions = subs.join(" ");
-  await set(ref(db, `users/${auth.currentUser.uid}/subscriptions`), newSubscriptions);
+export async function updateSubscription(code, subscribed) {
+  const subsRef = ref(db, `users/${auth.currentUser.uid}/subscriptions`);
+  const snap = await get(subsRef);
+  let subs = [];
+  if (snap.exists()) {
+    subs = snap.val().split(" ");
+    subs = subs.filter((subCode) => subCode !== code);
+  }
+  if (subscribed) subs.push(code);
+  await set(subsRef, subs.join(" "));
 }
 
 export async function deleteClip(code) {
@@ -99,18 +106,18 @@ export async function getClip(code) {
 export function createClipLoader(code, onLoad) {
   const clipRef = query(ref(db, 'clips/' + code));
   const listner = onValue(clipRef, async (snapshot) => {
-    if (snapshot.size !== 0) {
-      const clip = { code, ...snapshot.val(), exists: true };
-      //await sleep(100)
-      onLoad(clip)
-    } else {
-      onLoad({ code, text: "", createdBy: 0, updatedBy: 0, exist: false });
-    }
+    let clip = { code, text: "", createdBy: 0, updatedBy: 0, exist: false };
+    if (snapshot.size !== 0) clip = { code, ...snapshot.val(), exists: true };
+    onLoad(clip);
   });
-  return { callback: listner, ref: clipRef };
+  return () => off(clipRef, undefined, listner);
 }
 
 export function createSubClipsLoader(onLoad) {
+  if (!auth.currentUser) {
+    onLoad([]);
+    return () => { };
+  }
   const userRef = query(ref(db, 'users/' + auth.currentUser.uid));
   const listner = onValue(userRef, (snapshot) => {
     console.log("SUBS LOADED:", snapshot);
@@ -120,10 +127,14 @@ export function createSubClipsLoader(onLoad) {
     }
     onLoad(clipKeys);
   });
-  return { callback: listner, ref: userRef };
+  return () => off(userRef, undefined, listner);
 }
 
 export function createOwnClipsLoader(onLoad) {
+  if (!auth.currentUser) {
+    onLoad([]);
+    return () => { };
+  }
   const clipsRef = query(ref(db, 'clips'), orderByChild('createdBy'), equalTo(auth.currentUser.uid));
   const listner = onValue(clipsRef, (snapshot) => {
     let out = [];
@@ -132,10 +143,5 @@ export function createOwnClipsLoader(onLoad) {
     });
     onLoad(out);
   });
-  return { callback: listner, ref: clipsRef };
-}
-
-export function removeListner(obj) {
-  if (!obj) return;
-  off(obj.ref, undefined, obj.callback);
+  return () => off(clipsRef, undefined, listner);
 }
