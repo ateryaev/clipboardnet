@@ -7,7 +7,7 @@ export function PageWatch({ onCancel, ...props }) {
   const [saving, setSaving] = useState(false);
   const routerParam = useParams();
   const navigate = useNavigate();
-
+  useEffect(() => { document.title = `Watching ${routerParam.code}` }, [routerParam]);
   const [clip, setClip] = useState({});
   useEffect(() => createClipLoader(routerParam.code, setClip), [routerParam]);
 

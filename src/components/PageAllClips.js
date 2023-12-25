@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ClipRow } from "./ClipRow";
 import { DialogSearch } from "./DialogSearch";
 import { Window } from './Window';
@@ -19,6 +20,9 @@ function ClipsBlock({ children, codes, onSelect }) {
 export function PageAllClips({ owns, subs, ...props }) {
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => { document.title = "Clipboards Console" }, []);
+
   function handleMenuAction(action) {
     if (action === "create own clipboard") {
       navigate(`/create`);

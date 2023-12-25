@@ -40,7 +40,7 @@ export function PageEdit({ onCancel, onSelectConfirmExit, onSelectDelete, ...pro
   const navigate = useNavigate();
   const [clip, setClip] = useState({});
   useEffect(() => createClipLoader(routerParam.code, setClip), [routerParam]);
-
+  useEffect(() => { document.title = `Editing ${routerParam.code}` }, [routerParam]);
   useEffect(() => {
     handleInput();
   }, [clip]);

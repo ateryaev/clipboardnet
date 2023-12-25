@@ -12,6 +12,8 @@ export function PageCreate() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  useEffect(() => { document.title = "Creating New" }, []);
+
   useEffect(() => {
     const ti = setInterval(() => {
       setCurrentTime(new Date().getTime());

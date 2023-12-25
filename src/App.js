@@ -24,7 +24,7 @@ export default function App() {
   } else {
     return (<div className="App max-w-[1024px] min-h-[100svh]">
       <Routes>
-        <Route path="/" element=<PageAllClips owns={ownCodes} subs={subCodes} /> />
+        <Route path="/" title="All Clipboard" element=<PageAllClips owns={ownCodes} subs={subCodes} /> />
         <Route path="/watch/:code" element=<PageWatch /> />
         <Route path="/edit/:code" element=<PageEdit /> />
         <Route path="/create" element=<PageCreate /> />
