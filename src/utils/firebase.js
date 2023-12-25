@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, set, ref, update, query, orderByChild, onValue, off, equalTo, serverTimestamp, remove, get, child } from "firebase/database";
+import { getDatabase, set, ref, update, query, orderByChild, onValue, equalTo, serverTimestamp, remove, get, child, push, onDisconnect } from "firebase/database";
 import { getAuth, signInAnonymously } from "firebase/auth";
 import { firebaseConfig } from "./firebase.cfg";
 
@@ -23,9 +23,19 @@ export function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export async function signIn() {
-  await signInAnonymously(auth);
-  return auth.currentUser.uid;
+export function createConnectionListner(onConnectionChange) {
+  const connectedRef = ref(db, '.info/connected');
+  return onValue(connectedRef, async (snap) => {
+    if (snap.val() === true) {
+      await signInAnonymously(auth);
+      const uid = auth.currentUser.uid;
+      const disconnectedOnRef = ref(db, `users/${uid}/disconnectedOn`);
+      const connectedOnRef = ref(db, `users/${uid}/connectedOn`);
+      set(connectedOnRef, serverTimestamp());
+      onDisconnect(disconnectedOnRef).set(serverTimestamp());
+    }
+    onConnectionChange(snap.val());
+  });
 }
 
 function generateCode() {
@@ -55,6 +65,7 @@ export function clampCode(code) {
 }
 
 export async function addClip(text) {
+  if (!auth.currentUser) return;
   const code = generateCode();
   let clip = {};
   clip.createdBy = auth.currentUser.uid;
@@ -74,6 +85,7 @@ export async function updateClip(code, text) {
 }
 
 export async function updateSubscription(code, subscribed) {
+  if (!auth.currentUser) return;
   const subsRef = ref(db, `users/${auth.currentUser.uid}/subscriptions`);
   const snap = await get(subsRef);
   let subs = [];
@@ -105,43 +117,40 @@ export async function getClip(code) {
 
 export function createClipLoader(code, onLoad) {
   const clipRef = query(ref(db, 'clips/' + code));
-  const listner = onValue(clipRef, async (snapshot) => {
+  return onValue(clipRef, async (snapshot) => {
     let clip = { code, text: "", createdBy: 0, updatedBy: 0, exist: false };
     if (snapshot.size !== 0) clip = { code, ...snapshot.val(), exists: true };
     onLoad(clip);
   });
-  return () => off(clipRef, undefined, listner);
 }
 
-export function createSubClipsLoader(onLoad) {
+export function createSubsListner(onLoad) {
   if (!auth.currentUser) {
     onLoad([]);
     return () => { };
   }
-  const userRef = query(ref(db, 'users/' + auth.currentUser.uid));
-  const listner = onValue(userRef, (snapshot) => {
-    console.log("SUBS LOADED:", snapshot);
+  const userRef = query(ref(db, `users/${auth.currentUser.uid}`));
+  return onValue(userRef, (snapshot) => {
+    //console.log("SUBS LOADED:", snapshot.val(), snapshot.size, snapshot.exists());
     let clipKeys = [];
-    if (snapshot.size === 1 && snapshot.val().subscriptions) {
+    if (snapshot.exists() && snapshot.val().subscriptions) {
       clipKeys = snapshot.val().subscriptions.split(" ");
     }
     onLoad(clipKeys);
   });
-  return () => off(userRef, undefined, listner);
 }
 
-export function createOwnClipsLoader(onLoad) {
+export function createOwnsListner(onLoad) {
   if (!auth.currentUser) {
     onLoad([]);
     return () => { };
   }
   const clipsRef = query(ref(db, 'clips'), orderByChild('createdBy'), equalTo(auth.currentUser.uid));
-  const listner = onValue(clipsRef, (snapshot) => {
+  return onValue(clipsRef, (snapshot) => {
     let out = [];
     snapshot.forEach((child) => {
       out.push(child.key);
     });
     onLoad(out);
   });
-  return () => off(clipsRef, undefined, listner);
 }

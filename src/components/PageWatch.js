@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Window } from "./Window";
-import { createClipLoader, createSubClipsLoader, updateSubscription } from "../utils/firebase";
+import { createClipLoader, createSubsListner, updateSubscription } from "../utils/firebase";
 
-export function PageWatch({ code, subscribed, onCancel }) {
+export function PageWatch({ code, subscribed, onCancel, ...props }) {
   const textareaRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [clip, setClip] = useState({});
@@ -15,7 +15,7 @@ export function PageWatch({ code, subscribed, onCancel }) {
   }
 
   return (
-    <Window title={code} onBack={onCancel}>
+    <Window title={code} onBack={onCancel} disabled={saving || props.disabled} {...props}>
       <div className="py-0 ps-4 items-end uppercase text-xs font-extrabold flex justify-stretch">
         <div className="flex-1 pt-2">Watching clipboard
           <br />
@@ -25,14 +25,13 @@ export function PageWatch({ code, subscribed, onCancel }) {
             {!saving && clip.exists && new Date(clip.updatedOn).toLocaleString()}
           </small>
         </div>
-        {!subscribed && (<Button onClick={handleSubscibe} disabled={saving}>subscribe</Button>)}
+        {!subscribed && (<Button onClick={handleSubscibe}>subscribe</Button>)}
         {subscribed && (<button onClick={handleSubscibe}
-          className="bg-gray-100 p-3 uppercase text-green-600 disabled:opacity-10
-            hover:bg-gray-50"
-          disabled={saving}>subscribed</button>)}
+          className="bg-white p-3 uppercase text-green-600 
+          enabled:hover:bg-gray-100 enabled:active:bg-gray-300">subscribed</button>)}
       </div>
       <textarea className='border-4 min-h-fit block flex-1 break-all resize-none
-         border-gray-400 p-3 bg-gray-100 font-mono'
+         border-gray-300 p-3 bg-gray-100 font-mono focus:border-gray-400'
         spellCheck="false"
         value={clip.text}
         ref={textareaRef}

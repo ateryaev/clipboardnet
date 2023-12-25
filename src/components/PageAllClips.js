@@ -14,9 +14,8 @@ function ClipsBlock({ children, codes, onSelect }) {
     </div></>)
 }
 
-export function PageAllClips({ owns, subs, onSelectCreate, onSelectOwn, onSelectSub, onSelectSearch }) {
+export function PageAllClips({ owns, subs, onSelectCreate, onSelectOwn, onSelectSub, onSelectSearch, ...props }) {
 
-  //const [search, setSearch] = useState(false);
   function handleMenuAction(action) {
     if (action === "create own clipboard") {
       onSelectCreate();
@@ -30,10 +29,8 @@ export function PageAllClips({ owns, subs, onSelectCreate, onSelectOwn, onSelect
       title={(<span>Clipboards</span>)}
       actions={["create own clipboard", "search for others"]}
       onAction={handleMenuAction}
+      {...props}
     >
-      {/* {search && (
-        <DialogSearch onCancel={() => { setSearch(false) }} onFound={(code) => { onView(code) }} />
-      )} */}
       <ClipsBlock codes={owns} onSelect={onSelectOwn}>My own clipboards</ClipsBlock>
       <ClipsBlock codes={subs} onSelect={onSelectSub}>Subscriptions</ClipsBlock>
 

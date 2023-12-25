@@ -8,7 +8,6 @@ export function DialogDelete({ code, onCancel, onDeleted }) {
   async function handleDelete() {
     setDeleting(true);
     await deleteClip(code);
-    //await sleep(1000);
     onDeleted(code);
   }
 
@@ -29,7 +28,7 @@ export function DialogConfirmExit({ onCancel, onConfirm }) {
     </Confirm>)
 }
 
-export function PageEdit({ code, onCancel, onSelectConfirmExit, onSelectDelete }) {
+export function PageEdit({ code, onCancel, onSelectConfirmExit, onSelectDelete, ...props }) {
 
   const textRef = useRef(null);
   const [changed, setChanged] = useState(false);
@@ -48,13 +47,17 @@ export function PageEdit({ code, onCancel, onSelectConfirmExit, onSelectDelete }
 
   async function handleSave() {
     setSaving(true);
-    await updateClip(code, textRef.current.value.trim());
+    const text = textRef.current.value.trim();
+    textRef.current.value = text;
+    await updateClip(code, text);
     setSaving(false);
   }
 
   return (
-    <Window title={code} disabled={true}
+    <Window title={code} {...props}
+      disabled={saving || props.disabled}
       onBack={() => { if (changed) onSelectConfirmExit(); else onCancel(); }}
+      //onBack={() => { onSelectConfirmExit(); }}
       onAction={() => onSelectDelete(code)}
       actions={["delete clipboard"]}>
 
@@ -66,7 +69,7 @@ export function PageEdit({ code, onCancel, onSelectConfirmExit, onSelectDelete }
             {saving && (<>Processing</>)}
           </small></div>
 
-        <Button disabled={!changed || saving} onClick={handleSave}>save changes</Button>
+        <Button disabled={!changed} onClick={handleSave}>save changes</Button>
       </div>
 
       <textarea className='min-h-[80px] block flex-1 break-all resize-none
@@ -79,7 +82,6 @@ export function PageEdit({ code, onCancel, onSelectConfirmExit, onSelectDelete }
         defaultValue={clip.text}
         ref={textRef}
         onInput={handleInput}
-        disabled={saving}
       />
     </Window >);
 }
