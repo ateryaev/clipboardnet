@@ -1,12 +1,14 @@
 import { createClipLoader, deleteClip, sleep, updateClip } from "../utils/firebase";
 import { useEffect, useRef, useState } from "react";
 import { Button, Confirm, Window } from "./Window";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 export function DialogDelete({ code, onCancel, onDeleted }) {
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
+    //await sleep(1000);
     await deleteClip(code);
     onDeleted(code);
   }
@@ -28,14 +30,16 @@ export function DialogConfirmExit({ onCancel, onConfirm }) {
     </Confirm>)
 }
 
-export function PageEdit({ code, onCancel, onSelectConfirmExit, onSelectDelete, ...props }) {
+export function PageEdit({ onCancel, onSelectConfirmExit, onSelectDelete, ...props }) {
 
   const textRef = useRef(null);
   const [changed, setChanged] = useState(false);
   const [saving, setSaving] = useState(false);
-
+  const routerParam = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [clip, setClip] = useState({});
-  useEffect(() => createClipLoader(code, setClip), [code]);
+  useEffect(() => createClipLoader(routerParam.code, setClip), [routerParam]);
 
   useEffect(() => {
     handleInput();
@@ -49,39 +53,49 @@ export function PageEdit({ code, onCancel, onSelectConfirmExit, onSelectDelete, 
     setSaving(true);
     const text = textRef.current.value.trim();
     textRef.current.value = text;
-    await updateClip(code, text);
+    await updateClip(routerParam.code, text);
     setSaving(false);
   }
 
   return (
-    <Window title={code} {...props}
-      disabled={saving || props.disabled}
-      onBack={() => { if (changed) onSelectConfirmExit(); else onCancel(); }}
-      //onBack={() => { onSelectConfirmExit(); }}
-      onAction={() => onSelectDelete(code)}
-      actions={["delete clipboard"]}>
+    <>
+      {location.state === "delete" && (<DialogDelete
+        code={routerParam.code}
+        onDeleted={() => navigate("/", { replace: true })}
+        onCancel={() => navigate(-1)} />)}
 
-      <div className="py-0 ps-4 pt-0 items-end uppercase text-xs font-extrabold flex justify-stretch">
-        <div className="flex-1 pt-2">
-          Editing clipboard
-          <br /><small>
-            {!saving && (<>{clip.exists ? new Date(clip.updatedOn).toLocaleString() : "deleted"}</>)}
-            {saving && (<>Processing</>)}
-          </small></div>
+      {location.state === "confirm" && (<DialogConfirmExit
+        onConfirm={() => navigate("/", { replace: true })}
+        onCancel={() => navigate(-1)} />)}
 
-        <Button disabled={!changed} onClick={handleSave}>save changes</Button>
-      </div>
+      <Window title={routerParam.code} {...props}
+        disabled={saving || location.state}
+        onBack={() => { if (changed) navigate("", { state: "confirm" }); else navigate("/"); }}
+        onAction={() => { navigate("", { state: "delete" }); }}
+        actions={clip.exists ? ["delete clipboard"] : null}>
 
-      <textarea className='min-h-[80px] block flex-1 break-all resize-none
+        <div className="py-0 ps-4 pt-0 items-end uppercase text-xs font-extrabold flex justify-stretch">
+          <div className="flex-1 pt-2">
+            Editing clipboard
+            <br /><small>
+              {!saving && (<>{clip.exists ? new Date(clip.updatedOn).toLocaleString() : "clipboard not found"}</>)}
+              {saving && (<>Processing</>)}
+            </small></div>
+
+          <Button disabled={!changed} onClick={handleSave}>save changes</Button>
+        </div>
+
+        <textarea className='min-h-[80px] block flex-1 break-all resize-none
          border-4 border-gray-300 focus:border-gray-400
          p-3 bg-white font-mono 
          disabled:bg-gray-200'
-        spellCheck="false"
-        autoCapitalize="false"
-        autoFocus
-        defaultValue={clip.text}
-        ref={textRef}
-        onInput={handleInput}
-      />
-    </Window >);
+          spellCheck="false"
+          autoCapitalize="false"
+          autoFocus
+          defaultValue={clip.text}
+          ref={textRef}
+          onInput={handleInput}
+          disabled={!clip.exists}
+        />
+      </Window ></>);
 }

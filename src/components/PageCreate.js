@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Confirm, Window } from "./Window";
 import { addClip } from "../utils/firebase";
+import { useLocation, useNavigate } from "react-router-dom";
 
-export function PageCreate({ onCancel, onCreated }) {
+export function PageCreate() {
   const textareaRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(new Date().getTime());
-  const [changed, setChanged] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [confirmation, setConfirmation] = useState(""); //EXIT
+  const [text, setText] = useState("");
+
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const ti = setInterval(() => {
@@ -16,33 +19,44 @@ export function PageCreate({ onCancel, onCreated }) {
     return () => { clearInterval(ti) };
   }, []);
 
+  useEffect(() => {
+    if (location.state && location.state.text) setText(location.state.text);
+  }, [location]);
+
+  const changed = useMemo(() => {
+    return text.trim() !== "";
+  }, [text]);
+
   function handleInput() {
-    setChanged(textareaRef.current.value.trim() !== "");
+    const newText = textareaRef.current.value;
+    navigate("", { replace: true, state: { text: newText } });
   }
 
   async function handleCreate() {
     setSaving(true);
     const text = textareaRef.current.value.trim();
     const code = await addClip(text);
-    onCreated(code);
-    //setSaving(false);
+    navigate(`/edit/${code}`, { replace: true })
+    setSaving(false);
   }
 
   function handleBack() {
-    if (textareaRef.current.value.trim() !== "") {
-      setConfirmation("EXIT");
+    if (changed) {
+      navigate("", { state: { dialog: "confirm" } });
     } else {
-      onCancel();
+      navigate("/");
     }
   }
 
   return (
     <Window title={"??????"} onBack={handleBack}>
 
-      {confirmation === "EXIT" && (<Confirm action={"discard creation"} onAction={onCancel}
-        onCancel={() => { setConfirmation(null) }}>
-        Are you sure you want to exit? It will discard new clipboard creation.
-      </Confirm>)}
+      {location.state && location.state.dialog === "confirm" &&
+        (<Confirm action={"discard creation"}
+          onAction={() => navigate("/", { replace: true })}
+          onCancel={() => navigate(-1)}>
+          Are you sure you want to exit? It will discard new clipboard creation.
+        </Confirm>)}
 
       <div className="py-0 ps-4 pt-0 items-end uppercase text-xs font-extrabold flex justify-stretch">
         <div className="flex-1 pt-2">
@@ -63,6 +77,7 @@ export function PageCreate({ onCancel, onCreated }) {
         ref={textareaRef}
         onInput={handleInput}
         disabled={saving}
+        value={text}
       />
     </Window>
   );

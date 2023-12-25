@@ -1,20 +1,29 @@
 import { Modal, WButton } from "./Window"
 import * as Svg from './Svg'
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getClip } from "../utils/firebase";
+import { useLocation, useNavigate } from "react-router-dom";
 
-export function DialogSearch({ onCancel, onFound }) {
+export function DialogSearch({ }) {
   const searchInput = useRef(null);
   const [code, setCode] = useState("");
   const [searching, setSearching] = useState(false);
   const [status, setStatus] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
 
   function handleInput() {
-    let c = searchInput.current.value;
-    c = c.trim();
-    c = c.toUpperCase();
-    setCode(c);
+    let newCode = searchInput.current.value;
+    newCode = newCode.trim().toUpperCase();
+    navigate("", { state: { dialog: "search", code: newCode }, replace: true })
   }
+  const searchable = useMemo(() => {
+    return !searching && code.trim().length > 4;
+  }, [code, searching]);
+
+  useEffect(() => {
+    setCode(location.state.code ? location.state.code : "");
+  }, [location]);
 
   async function handleSearchClick() {
     if (code.length < 5) return;
@@ -23,18 +32,19 @@ export function DialogSearch({ onCancel, onFound }) {
     const clip = await getClip(code);
 
     if (!clip) {
-      setStatus(`Clipboard #${code} was not found!`);
+      setStatus(`Clipboard ${code} was not found!`);
     } else {
       setStatus("");
-      onFound(code);
+      navigate(`/watch/${code}`, { replace: true });
     }
     setSearching(false);
   }
   return (<Modal title="search by code" icon={<Svg.Zoom />} bg="blue-500" fg="gray-200"
-    onCancel={onCancel} >
+    onCancel={() => { navigate(-1) }} >
     <div className="text-center text-gray-500 font-bold text-xs mb-[-10px]">{status}</div>
     <input ref={searchInput}
       onInput={handleInput}
+      value={code}
       autoFocus
       spellCheck="false"
       onKeyDown={(e) => { e.code === "Enter" && handleSearchClick() }}
@@ -47,9 +57,8 @@ export function DialogSearch({ onCancel, onFound }) {
       disabled={searching}
       placeholder="6-symbols code" />
 
-    <div className="text-xs font-extrabold p-0 flex justify-center xh-[40px]">
-      <WButton onClick={handleSearchClick} disabled={searching || code.length < 5}>search clipboard</WButton>
-
+    <div className="text-xs font-extrabold flex justify-center">
+      <WButton onClick={handleSearchClick} disabled={!searchable}>search clipboard</WButton>
     </div>
   </ Modal>)
 }

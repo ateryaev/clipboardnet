@@ -1,21 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Window } from "./Window";
 import { createClipLoader, createSubsListner, updateSubscription } from "../utils/firebase";
+import { useNavigate, useParams } from "react-router-dom";
 
-export function PageWatch({ code, subscribed, onCancel, ...props }) {
-  const textareaRef = useRef(null);
+export function PageWatch({ onCancel, ...props }) {
   const [saving, setSaving] = useState(false);
+  const routerParam = useParams();
+  const navigate = useNavigate();
+
   const [clip, setClip] = useState({});
-  useEffect(() => createClipLoader(code, setClip), [code]);
+  useEffect(() => createClipLoader(routerParam.code, setClip), [routerParam]);
+
+  const [subCodes, setSubCodes] = useState([]);
+  useEffect(() => createSubsListner(setSubCodes), []);
+
+  const subscribed = useMemo(() => {
+    return subCodes.includes(routerParam.code);
+  }, [subCodes]);
 
   async function handleSubscibe() {
     setSaving(true);
-    await updateSubscription(code, !subscribed);
+    await updateSubscription(routerParam.code, !subscribed);
     setSaving(false);
   }
 
   return (
-    <Window title={code} onBack={onCancel} disabled={saving || props.disabled} {...props}>
+    <Window title={routerParam.code}
+      onBack={() => { navigate("/"); }}
+      disabled={saving || props.disabled} {...props}>
+
       <div className="py-0 ps-4 items-end uppercase text-xs font-extrabold flex justify-stretch">
         <div className="flex-1 pt-2">Watching clipboard
           <br />
@@ -34,7 +47,7 @@ export function PageWatch({ code, subscribed, onCancel, ...props }) {
          border-gray-300 p-3 bg-gray-100 font-mono focus:border-gray-400'
         spellCheck="false"
         value={clip.text}
-        ref={textareaRef}
+        disabled={!clip.exists}
         readOnly />
     </Window >
   );

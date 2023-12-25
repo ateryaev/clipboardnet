@@ -1,5 +1,7 @@
 import { ClipRow } from "./ClipRow";
+import { DialogSearch } from "./DialogSearch";
 import { Window } from './Window';
+import { useLocation, useNavigate } from "react-router-dom";
 
 function ClipsBlock({ children, codes, onSelect }) {
   return (<>
@@ -14,25 +16,30 @@ function ClipsBlock({ children, codes, onSelect }) {
     </div></>)
 }
 
-export function PageAllClips({ owns, subs, onSelectCreate, onSelectOwn, onSelectSub, onSelectSearch, ...props }) {
-
+export function PageAllClips({ owns, subs, ...props }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   function handleMenuAction(action) {
     if (action === "create own clipboard") {
-      onSelectCreate();
+      navigate(`/create`);
     } else {
-      onSelectSearch();
+      navigate("", { state: { dialog: "search" } });
     }
   }
 
   return (
-    <Window
-      title={(<span>Clipboards</span>)}
-      actions={["create own clipboard", "search for others"]}
-      onAction={handleMenuAction}
-      {...props}
-    >
-      <ClipsBlock codes={owns} onSelect={onSelectOwn}>My own clipboards</ClipsBlock>
-      <ClipsBlock codes={subs} onSelect={onSelectSub}>Subscriptions</ClipsBlock>
+    <>
+      {location.state && location.state.dialog === "search" && (<DialogSearch />)}
+      <Window
+        title={(<span>Clipboards</span>)}
+        actions={["create own clipboard", "search for others"]}
+        onAction={handleMenuAction}
+        {...props}
+      >
 
-    </Window>);
+        <ClipsBlock codes={owns} onSelect={(code) => { navigate(`/edit/${code}`) }}>My own clipboards</ClipsBlock>
+        <ClipsBlock codes={subs} onSelect={(code) => { navigate(`/watch/${code}`) }}>Subscriptions</ClipsBlock>
+
+      </Window>
+    </>);
 }
