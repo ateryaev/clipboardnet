@@ -87,7 +87,7 @@ export function Window({ title, onAction, onBack, children, actions, disabled, h
 
   return (
     <fieldset disabled={disabled} hidden={hidden}>
-      <div className="flex flex-col max-h-screen min-h-screen"
+      <div className="flex flex-col h-[100svh]"
         onClick={() => { actionsShown && setActionsShown(false) }}>
 
         <div className="flex justify-between gap-[0px] items-center bg-[#369] h-[50px]">
