@@ -1,10 +1,18 @@
 {
   "rules": {
-    ".read": "now < 1704492000000",  // 2024-1-6
-    ".write": "now < 1704492000000",  // 2024-1-6
-      "clips":{
-        ".indexOn":"createdBy"
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "clips": {
+      ".indexOn": "createdBy",
+      "$clipid": {
+        ".write": "(!data.exists() && newData.child('createdBy').val() === auth.uid ) || (data.child('createdBy').val() === auth.uid && newData.child('createdBy').val() === auth.uid)"
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
     }
-      
   }
 }
