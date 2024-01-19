@@ -27,3 +27,5 @@ There is no any protection agains anyone can view your notes, but noone can chan
 * https://tailwindcss.com - CSS framework
 * https://reactrouter.com - client side routing library
 
+## Some screenshots
+![plot](./screenshots/clipboardnet.png)
