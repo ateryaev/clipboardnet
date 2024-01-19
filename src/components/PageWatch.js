@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Window } from "./Window";
 import { createClipLoader, createSubsListner, updateSubscription } from "../utils/firebase";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-export function PageWatch({ onCancel, ...props }) {
+export function PageWatch({ ...props }) {
   const [saving, setSaving] = useState(false);
   const routerParam = useParams();
   const navigate = useNavigate();
